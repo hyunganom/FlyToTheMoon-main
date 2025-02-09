@@ -18,7 +18,7 @@ pipeline {
             steps {
                 // 'study' 폴더 내 Dockerfile을 이용하여 이미지 빌드
                 dir('study') {
-                    sh "docker build -t ${IMAGE_NAME} ."
+                    sh "docker build --platform linux/amd64 -t rheonik/study-1.1 ."
                 }
             }
         }
