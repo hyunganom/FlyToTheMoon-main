@@ -1,48 +1,48 @@
 pipeline {
     agent any
-
-    // 이미지명과 네트워크 이름은 환경 변수로 설정
     environment {
         IMAGE_NAME  = "rheonik/study-1.1"
         NETWORK_NAME = "jonnee-network"
     }
-
     stages {
-        stage("Checkout") {
+        stage("Checkout SCM") {
             steps {
-                // Git 저장소에서 코드를 받아옵니다.
                 checkout scm
+            }
+        }
+        stage("Build Application") {
+            steps {
+                dir('study') {
+                    // Maven 빌드를 통해 target 폴더에 JAR 파일 생성 (pom.xml 파일이 study 폴더 내에 있다고 가정)
+                    sh "mvn clean package -DskipTests"
+                }
             }
         }
         stage("Build Docker Image") {
             steps {
-                // 'study' 폴더 내 Dockerfile을 이용하여 이미지 빌드
                 dir('study') {
-                    sh "docker build --platform linux/amd64 -t rheonik/study-1.1 ."
+                    // 생성된 JAR 파일을 포함한 Docker 이미지를 빌드
+                    sh "docker build --platform linux/amd64 -t ${IMAGE_NAME} ."
                 }
             }
         }
         stage("Cleanup Existing Containers") {
             steps {
-                // 이전에 실행 중인 컨테이너가 있으면 제거 (오류 발생 시 무시)
                 sh 'docker rm -f mysql-test || true'
                 sh 'docker rm -f spring-docker-test || true'
             }
         }
         stage("Run MySQL Container") {
             steps {
-                // MySQL 컨테이너 실행
                 sh "docker run --network ${NETWORK_NAME} --name mysql-test -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=testdb -p 3306:3306 -d mysql:8.0"
             }
         }
         stage("Run Spring Container") {
             steps {
-                // 빌드한 이미지를 사용하여 Spring 컨테이너 실행
                 sh "docker run -d -p 8888:8888 --network ${NETWORK_NAME} --name spring-docker-test ${IMAGE_NAME}"
             }
         }
     }
-
     post {
         always {
             echo "Pipeline finished."
