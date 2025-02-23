@@ -9,7 +9,9 @@ services:
     ports:
       - "3306:3306"
     networks:
-      - jonnee-network
+      jonnee-network:
+        aliases:
+          - mysql-test
 
   nginx:
     image: nginx:latest
