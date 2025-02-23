@@ -8,6 +8,6 @@ spring:
     hibernate:
       ddl-auto: update  # 자동 테이블 생성
     show-sql: true      # 실행되는 SQL 출력
-
+# ㅁㄴㅇ
 server:
   port: 8888
