@@ -28,49 +28,52 @@ pipeline {
         stage('Blue-Green Deployment') {
             steps {
                 script {
-                    // 1. 현재 활성 컨테이너 확인 (spring-blue가 실행 중이면 Blue, 아니면 Green)
-                    def activeBlue = sh(
-                        script: "docker ps --filter 'name=spring-blue' --format '{{.Names}}'",
-                        returnStdout: true
-                    ).trim()
+                    // docker-compose.yml 파일이 있는 study 디렉토리로 이동하여 작업
+                    dir('study') {
+                        // 1. 현재 활성 컨테이너 확인 (spring-blue가 실행 중이면 Blue, 아니면 Green)
+                        def activeBlue = sh(
+                            script: "docker ps --filter 'name=spring-blue' --format '{{.Names}}'",
+                            returnStdout: true
+                        ).trim()
 
-                    def newVersion = ""
-                    if (activeBlue) {
-                        echo "현재 활성 컨테이너: spring-blue, 새로운 버전은 spring-green 배포"
-                        newVersion = "spring-green"
-                    } else {
-                        echo "spring-blue가 실행 중이지 않거나 spring-green이 활성일 수 있음, spring-blue 배포"
-                        newVersion = "spring-blue"
-                    }
+                        def newVersion = ""
+                        if (activeBlue) {
+                            echo "현재 활성 컨테이너: spring-blue, 새로운 버전은 spring-green 배포"
+                            newVersion = "spring-green"
+                        } else {
+                            echo "spring-blue가 실행 중이지 않거나 spring-green이 활성일 수 있음, spring-blue 배포"
+                            newVersion = "spring-blue"
+                        }
 
-                    // 2. docker-compose로 새로운 컨테이너 기동 (이미 docker-compose.yml에 정의되어 있음)
-                    sh "docker-compose up -d ${newVersion}"
+                        // 2. docker-compose로 새로운 컨테이너 기동 (docker-compose.yml에 정의되어 있음)
+                        sh "docker-compose up -d ${newVersion}"
 
-                    // 3. 신규 컨테이너 헬스 체크 (Green이면 포트 8889, Blue이면 8888)
-                    echo "신규 컨테이너(${newVersion}) 기동 대기 중..."
-                    sleep time: 30, unit: 'SECONDS'  // 실제 환경에 맞게 조정
-                    if (newVersion == "spring-green") {
-                        sh "curl --fail http://localhost:8889/actuator/health"
-                    } else {
-                        sh "curl --fail http://localhost:8888/actuator/health"
-                    }
+                        // 3. 신규 컨테이너 헬스 체크 (spring-green이면 포트 8889, spring-blue이면 8888)
+                        echo "신규 컨테이너(${newVersion}) 기동 대기 중..."
+                        sleep time: 30, unit: 'SECONDS'  // 실제 환경에 맞게 대기 시간 조정
+                        if (newVersion == "spring-green") {
+                            sh "curl --fail http://localhost:8889/actuator/health"
+                        } else {
+                            sh "curl --fail http://localhost:8888/actuator/health"
+                        }
 
-                    // 4. Nginx 설정 업데이트 및 재시작
-                    if (newVersion == "spring-green") {
-                        sh "cp nginx/nginx-green.conf nginx/nginx.conf"
-                    } else {
-                        sh "cp nginx/nginx-blue.conf nginx/nginx.conf"
-                    }
-                    // Nginx 컨테이너 내 설정을 다시 읽게 reload
-                    sh "docker exec nginx-loadbalancer nginx -s reload"
+                        // 4. Nginx 설정 업데이트 및 재시작
+                        if (newVersion == "spring-green") {
+                            sh "cp nginx/nginx-green.conf nginx/nginx.conf"
+                        } else {
+                            sh "cp nginx/nginx-blue.conf nginx/nginx.conf"
+                        }
+                        // Nginx 컨테이너 내 설정을 다시 읽게 reload
+                        sh "docker exec nginx-loadbalancer nginx -s reload"
 
-                    // 5. 기존 컨테이너 종료 및 정리
-                    if (newVersion == "spring-green") {
-                        echo "기존 spring-blue 컨테이너 종료"
-                        sh "docker-compose rm -sf spring-blue || true"
-                    } else {
-                        echo "기존 spring-green 컨테이너 종료"
-                        sh "docker-compose rm -sf spring-green || true"
+                        // 5. 기존 컨테이너 종료 및 정리
+                        if (newVersion == "spring-green") {
+                            echo "기존 spring-blue 컨테이너 종료"
+                            sh "docker-compose rm -sf spring-blue || true"
+                        } else {
+                            echo "기존 spring-green 컨테이너 종료"
+                            sh "docker-compose rm -sf spring-green || true"
+                        }
                     }
                 }
             }
