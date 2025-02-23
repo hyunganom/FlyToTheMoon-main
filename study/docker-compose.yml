@@ -34,7 +34,6 @@ services:
     networks:
       - jonnee-network
     platform: linux/amd64
-    # Blue 버전이 초기 활성 상태라고 가정
 
   spring-green:
     image: rheonik/study-1.1
@@ -46,7 +45,6 @@ services:
     networks:
       - jonnee-network
     platform: linux/amd64
-      # 배포 시점에 활성화할 Green 버전
 
 networks:
   jonnee-network:
