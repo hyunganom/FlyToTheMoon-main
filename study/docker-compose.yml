@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-test
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: testdb
+    ports:
+      - "3306:3306"
+    networks:
+      - jonnee-network
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-loadbalancer
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - spring-blue
+      - spring-green
+    networks:
+      - jonnee-network
+
+  spring-blue:
+    image: rheonik/study-1.1
+    container_name: spring-blue
+    environment:
+      - SPRING_PROFILES_ACTIVE=blue
+    ports:
+      - "8888:8888"
+    networks:
+      - jonnee-network
+    # Blue 버전이 초기 활성 상태라고 가정
+
+  spring-green:
+    image: rheonik/study-1.1
+    container_name: spring-green
+    environment:
+      - SPRING_PROFILES_ACTIVE=green
+    ports:
+      - "8889:8888"
+    networks:
+      - jonnee-network
+      # 배포 시점에 활성화할 Green 버전
+
+networks:
+  jonnee-network:
+    driver: bridge

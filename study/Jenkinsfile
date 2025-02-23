@@ -7,14 +7,12 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // GitHub 저장소에서 소스 코드 체크아웃
                 checkout scm
             }
         }
         stage('Build Application') {
             steps {
                 dir('study') {
-                    // Maven 빌드 시 테스트 스킵 옵션 추가
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -27,23 +25,54 @@ pipeline {
                 }
             }
         }
-        stage('Cleanup Existing Containers') {
+        stage('Blue-Green Deployment') {
             steps {
-                // 동일 이름의 기존 컨테이너가 있다면 삭제
-                sh 'docker rm -f mysql-test || true'
-                sh 'docker rm -f spring-docker-test || true'
-            }
-        }
-        stage('Run MySQL Container') {
-            steps {
-                // MySQL 컨테이너 실행
-                sh 'docker run --network jonnee-network --name mysql-test -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=testdb -p 3306:3306 -d mysql:8.0'
-            }
-        }
-        stage('Run Spring Container') {
-            steps {
-                // 빌드한 이미지로 애플리케이션 컨테이너 실행
-                sh 'docker run -d -p 8888:8888 --network jonnee-network --name spring-docker-test rheonik/study-1.1'
+                script {
+                    // 1. 현재 활성 컨테이너 확인 (spring-blue가 실행 중이면 Blue, 아니면 Green)
+                    def activeBlue = sh(
+                        script: "docker ps --filter 'name=spring-blue' --format '{{.Names}}'",
+                        returnStdout: true
+                    ).trim()
+
+                    def newVersion = ""
+                    if (activeBlue) {
+                        echo "현재 활성 컨테이너: spring-blue, 새로운 버전은 spring-green 배포"
+                        newVersion = "spring-green"
+                    } else {
+                        echo "spring-blue가 실행 중이지 않거나 spring-green이 활성일 수 있음, spring-blue 배포"
+                        newVersion = "spring-blue"
+                    }
+
+                    // 2. docker-compose로 새로운 컨테이너 기동 (이미 docker-compose.yml에 정의되어 있음)
+                    sh "docker-compose up -d ${newVersion}"
+
+                    // 3. 신규 컨테이너 헬스 체크 (Green이면 포트 8889, Blue이면 8888)
+                    echo "신규 컨테이너(${newVersion}) 기동 대기 중..."
+                    sleep time: 30, unit: 'SECONDS'  // 실제 환경에 맞게 조정
+                    if (newVersion == "spring-green") {
+                        sh "curl --fail http://localhost:8889/actuator/health"
+                    } else {
+                        sh "curl --fail http://localhost:8888/actuator/health"
+                    }
+
+                    // 4. Nginx 설정 업데이트 및 재시작
+                    if (newVersion == "spring-green") {
+                        sh "cp nginx/nginx-green.conf nginx/nginx.conf"
+                    } else {
+                        sh "cp nginx/nginx-blue.conf nginx/nginx.conf"
+                    }
+                    // Nginx 컨테이너 내 설정을 다시 읽게 reload
+                    sh "docker exec nginx-loadbalancer nginx -s reload"
+
+                    // 5. 기존 컨테이너 종료 및 정리
+                    if (newVersion == "spring-green") {
+                        echo "기존 spring-blue 컨테이너 종료"
+                        sh "docker-compose rm -sf spring-blue || true"
+                    } else {
+                        echo "기존 spring-green 컨테이너 종료"
+                        sh "docker-compose rm -sf spring-green || true"
+                    }
+                }
             }
         }
     }
