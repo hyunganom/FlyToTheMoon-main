@@ -12,7 +12,7 @@ services:
       jonnee-network:
         aliases:
           - mysql-test
-
+#s
   nginx:
     image: nginx:latest
     container_name: nginx-loadbalancer
