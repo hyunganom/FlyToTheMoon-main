@@ -1,5 +1,5 @@
-# 1. 베이스 이미지로 OpenJDK 1docker build -t rheonik/study-1.1:1.1 .1 사용
-FROM openjdk:17-jdk-alpine
+# 1. 베이스 이미지로 OpenJDK 17 (platform 명시)
+FROM --platform=linux/amd64 openjdk:17-jdk-alpine
 
 # 2. 애플리케이션 JAR 파일을 컨테이너로 복사
 ARG JAR_FILE=target/*.jar
