@@ -15,8 +15,11 @@ pipeline {
         stage('Build Application') {
             steps {
                 echo 'Building the application with Maven...'
-                // 소스 코드는 FlyToTheMoon-main/study 폴더에 있으므로 해당 디렉터리로 이동합니다.
+                // Maven 프로젝트 파일(pom.xml)이 study 폴더 내에 있으므로 해당 디렉터리로 이동
                 dir('FlyToTheMoon-main/study') {
+                    // 현재 디렉터리 내용 확인 (디버깅용)
+                    sh 'ls -la'
+                    // Maven 빌드 실행
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -24,7 +27,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
-                // Dockerfile은 FlyToTheMoon-main/study 폴더 내에 있다고 가정합니다.
+                // Dockerfile이 study 폴더에 있으므로 해당 디렉터리로 이동하여 이미지 빌드
                 dir('FlyToTheMoon-main/study') {
                     sh 'docker build -t jonneedev/study-0.0.1-snapshot.jar .'
                 }
@@ -33,8 +36,8 @@ pipeline {
         stage('Deploy Blue Version') {
             steps {
                 echo 'Deploying the Blue version using Docker Compose...'
-                // docker-compose.yml 파일은 FlyToTheMoon-main 폴더에 위치
-                dir('FlyToTheMoon-main') {
+                // docker-compose.yml이 study 폴더에 있으므로 해당 디렉터리로 이동하여 app_blue 서비스 실행
+                dir('FlyToTheMoon-main/study') {
                     sh 'docker-compose -f docker-compose.yml up -d app_blue'
                 }
             }
@@ -42,28 +45,28 @@ pipeline {
         stage('Health Check Blue') {
             steps {
                 echo 'Performing health check on Blue version...'
-                // Blue 컨테이너가 기동할 시간을 주기 위해 잠시 대기 (필요시 시간 조정)
+                // Blue 컨테이너 기동 후 잠시 대기
                 sh 'sleep 10'
-                // Blue 버전의 /health 엔드포인트를 호출 (애플리케이션에 맞게 엔드포인트 조정)
+                // Blue 버전의 /health 엔드포인트 헬스체크 (엔드포인트는 애플리케이션에 맞게 조정)
                 sh 'curl --fail http://localhost:8889/health || (echo "Health check failed" && exit 1)'
             }
         }
         stage('Switch Traffic to Blue') {
             steps {
                 echo 'Switching traffic to Blue version via Nginx update...'
-                // Nginx 설정 파일은 FlyToTheMoon-main/nginx/conf.d 폴더에 위치한다고 가정합니다.
-                dir('FlyToTheMoon-main') {
+                // nginx 설정 파일은 study/nginx/conf.d/spring_app.conf에 위치
+                dir('FlyToTheMoon-main/study') {
                     sh "sed -i.bak 's/server app_green:8888;/server app_blue:8889;/' ./nginx/conf.d/spring_app.conf"
                 }
-                // Nginx 컨테이너 내에서 설정 변경을 적용하기 위해 reload 명령어 실행
+                // Nginx 컨테이너에서 설정 변경을 적용하기 위해 reload
                 sh 'docker exec nginx nginx -s reload'
             }
         }
         stage('Remove Green Version') {
             steps {
                 echo 'Removing the Green version container...'
-                // docker-compose.yml 파일이 있는 디렉터리에서 기존 Green 컨테이너 제거
-                dir('FlyToTheMoon-main') {
+                // 기존 Green 컨테이너 제거 (docker-compose.yml이 있는 디렉터리에서 실행)
+                dir('FlyToTheMoon-main/study') {
                     sh 'docker-compose -f docker-compose.yml rm -f app_green'
                 }
             }
