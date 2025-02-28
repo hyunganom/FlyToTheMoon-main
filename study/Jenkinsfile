@@ -44,7 +44,7 @@ pipeline {
         stage('Health Check Blue') {
             steps {
                 echo 'Performing health check on Blue version...'
-                sh 'sleep 20'
+                sh 'sleep 30'
                 sh 'curl --fail http://localhost:8889/actuator/health || (echo "Health check failed" && exit 1)'
             }
         }
