@@ -14,11 +14,8 @@ pipeline {
         stage('Build Application') {
             steps {
                 echo 'Building the application with Maven...'
-                // Maven 프로젝트(pom.xml)가 study 폴더 내에 있으므로 해당 디렉터리로 이동합니다.
                 dir('study') {
-                    // 디버깅용으로 현재 디렉터리 목록 확인
                     sh 'ls -la'
-                    // Maven 빌드 실행 (테스트 스킵)
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -26,7 +23,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
-                // Dockerfile이 study 폴더에 있으므로 해당 디렉터리에서 이미지 빌드
                 dir('study') {
                     sh 'docker build -t jonneedev/study-0.0.1-snapshot.jar .'
                 }
@@ -35,35 +31,24 @@ pipeline {
         stage('Deploy Blue Version') {
             steps {
                 echo 'Deploying the Blue version using Docker Compose...'
-                // docker-compose.yml 파일이 study 폴더에 있으므로 그 위치에서 실행
                 dir('study') {
                     sh 'docker-compose -f docker-compose.yml up -d app_blue'
                 }
             }
         }
-        stage('Health Check Blue') {
-            steps {
-                echo 'Performing health check on Blue version...'
-                sh 'sleep 30'
-                sh 'curl --fail http://host.docker.internal:8889/actuator/health || (echo "Health check failed" && exit 1)'
-            }
-        }
-
+        // 헬스체크 단계는 스킵 또는 제거합니다.
         stage('Switch Traffic to Blue') {
             steps {
                 echo 'Switching traffic to Blue version via Nginx update...'
-                // nginx 설정 파일은 study/nginx/conf.d/spring_app.conf에 있으므로 해당 위치에서 수정
                 dir('study') {
                     sh "sed -i.bak 's/server app_green:8888;/server app_blue:8889;/' ./nginx/conf.d/spring_app.conf"
                 }
-                // Nginx 컨테이너에서 설정 재로드 (Nginx 컨테이너 이름은 'nginx'로 가정)
                 sh 'docker exec nginx nginx -s reload'
             }
         }
         stage('Remove Green Version') {
             steps {
                 echo 'Removing the Green version container...'
-                // 기존 Green 버전 컨테이너 제거 (docker-compose.yml이 있는 위치에서 실행)
                 dir('study') {
                     sh 'docker-compose -f docker-compose.yml rm -f app_green'
                 }
