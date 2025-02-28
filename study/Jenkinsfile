@@ -44,10 +44,8 @@ pipeline {
         stage('Health Check Blue') {
             steps {
                 echo 'Performing health check on Blue version...'
-                // Blue 컨테이너가 기동할 시간을 주기 위해 잠시 대기
-                sh 'sleep 10'
-                // Blue 버전의 /health 엔드포인트 헬스체크 (엔드포인트는 애플리케이션에 맞게 조정)
-                sh 'curl --fail http://localhost:8889/health || (echo "Health check failed" && exit 1)'
+                sh 'sleep 20'
+                sh 'curl --fail http://localhost:8889/actuator/health || (echo "Health check failed" && exit 1)'
             }
         }
         stage('Switch Traffic to Blue') {
