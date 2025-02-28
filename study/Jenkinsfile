@@ -45,9 +45,10 @@ pipeline {
             steps {
                 echo 'Performing health check on Blue version...'
                 sh 'sleep 30'
-                sh 'curl --fail http://localhost:8889/actuator/health || (echo "Health check failed" && exit 1)'
+                sh 'curl --fail http://host.docker.internal:8889/actuator/health || (echo "Health check failed" && exit 1)'
             }
         }
+
         stage('Switch Traffic to Blue') {
             steps {
                 echo 'Switching traffic to Blue version via Nginx update...'
