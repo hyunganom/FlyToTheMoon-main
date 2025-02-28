@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app_green:
-    platform: linux/amd64        # 추가: 강제로 AMD64 사용
+    platform: linux/amd64
     image: jonneedev/study-0.0.1-snapshot.jar
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-test:3306/testdb?serverTimezone=UTC&characterEncoding=UTF-8
@@ -14,7 +14,7 @@ services:
       - jonnee-network
 
   app_blue:
-    platform: linux/amd64        # 추가: 강제로 AMD64 사용
+    platform: linux/amd64
     image: jonneedev/study-0.0.1-snapshot.jar
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-test:3306/testdb?serverTimezone=UTC&characterEncoding=UTF-8
@@ -27,6 +27,7 @@ services:
 
   nginx:
     image: nginx:alpine
+    container_name: nginx      # 추가: 명시적인 컨테이너 이름 설정
     ports:
       - "80:80"
     volumes:
