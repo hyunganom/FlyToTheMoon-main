@@ -1,53 +1,38 @@
 version: '3.8'
+
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql-test
+  app_green:
+    image: jonneedev/study-0.0.1-snapshot.jar
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: testdb
+      # MySQL 연결 시 network alias를 사용
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-test:3306/testdb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
     ports:
-      - "3306:3306"
+      - "8888:8888"   # 현재 운영 중인 버전
     networks:
-      jonnee-network:
-        aliases:
-          - mysql-test
-#s
+      - jonnee-network
+
+  app_blue:
+    image: jonneedev/study-0.0.1-snapshot.jar
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-test:3306/testdb?serverTimezone=UTC&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    ports:
+      - "8889:8888"   # 새롭게 배포할 버전 (내부 포트 8888을 외부에 8889로 노출)
+    networks:
+      - jonnee-network
+
   nginx:
-    image: nginx:latest
-    container_name: nginx-loadbalancer
-    volumes:
-      - ./nginx/nginx-blue.conf:/etc/nginx/nginx.conf:ro
+    image: nginx:alpine
     ports:
       - "80:80"
-    depends_on:
-      - spring-blue
-      - spring-green
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
     networks:
       - jonnee-network
-
-  spring-blue:
-    image: rheonik/study-1.1
-    container_name: spring-blue
-    environment:
-      - SPRING_PROFILES_ACTIVE=blue
-    ports:
-      - "8888:8888"
-    networks:
-      - jonnee-network
-    platform: linux/amd64
-
-  spring-green:
-    image: rheonik/study-1.1
-    container_name: spring-green
-    environment:
-      - SPRING_PROFILES_ACTIVE=green
-    ports:
-      - "8889:8888"
-    networks:
-      - jonnee-network
-    platform: linux/amd64
 
 networks:
   jonnee-network:
-    driver: bridge
+    external: true

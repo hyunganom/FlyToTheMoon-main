@@ -1,17 +1,22 @@
 pipeline {
     agent any
     tools {
+        // JDK와 Maven이 사전에 Jenkins Global Tool Configuration에 등록되어 있어야 합니다.
         jdk 'JDK11'
         maven 'MAVEN_HOME'
     }
     stages {
         stage('Checkout') {
             steps {
+                echo 'Checking out source code...'
+                // SCM에서 소스코드 체크아웃
                 checkout scm
             }
         }
         stage('Build Application') {
             steps {
+                echo 'Building the application with Maven...'
+                // study 디렉터리에서 Maven 빌드를 실행 (테스트는 스킵)
                 dir('study') {
                     sh 'mvn clean package -DskipTests'
                 }
@@ -19,62 +24,47 @@ pipeline {
         }
         stage('Build Docker Image') {
             steps {
+                echo 'Building Docker image...'
+                // study 디렉터리 내 Dockerfile을 사용해 Docker 이미지 빌드
                 dir('study') {
-                    sh "docker build --platform linux/amd64 -t rheonik/study-1.1 ."
+                    sh 'docker build -t jonneedev/study-0.0.1-snapshot.jar .'
                 }
             }
         }
-        stage('Blue-Green Deployment') {
+        stage('Deploy Blue Version') {
             steps {
-                script {
-                    dir('study') {
-                        // 1. 현재 활성 컨테이너 확인
-                        def activeBlue = sh(
-                            script: "docker ps --filter 'name=spring-blue' --format '{{.Names}}'",
-                            returnStdout: true
-                        ).trim()
-
-                        def newVersion = ""
-                        if (activeBlue) {
-                            echo "현재 활성 컨테이너: spring-blue, 새로운 버전은 spring-green 배포"
-                            newVersion = "spring-green"
-                        } else {
-                            echo "spring-blue가 실행 중이지 않거나 spring-green이 활성일 수 있음, spring-blue 배포"
-                            newVersion = "spring-blue"
-                        }
-
-                        // 2. docker-compose로 새로운 컨테이너 기동
-                        sh "docker-compose up -d ${newVersion}"
-
-                        // 3. 신규 컨테이너 기동 후 충분한 시간 대기 (예: 45초)
-                        echo "신규 컨테이너(${newVersion}) 기동 대기 중..."
-                        sleep time: 45, unit: 'SECONDS'  // 필요에 따라 조정
-
-                        // 헬스 체크: 포트 매핑 확인
-                        if (newVersion == "spring-green") {
-                            sh "curl --fail http://localhost:8889/actuator/health"
-                        } else {
-                            sh "curl --fail http://localhost:8888/actuator/health"
-                        }
-
-                        // 4. Nginx 설정 업데이트 및 재시작
-                        if (newVersion == "spring-green") {
-                            sh "cp nginx/nginx-green.conf nginx/nginx.conf"
-                        } else {
-                            sh "cp nginx/nginx-blue.conf nginx/nginx.conf"
-                        }
-                        sh "docker exec nginx-loadbalancer nginx -s reload"
-
-                        // 5. 기존 컨테이너 종료 및 정리
-                        if (newVersion == "spring-green") {
-                            echo "기존 spring-blue 컨테이너 종료"
-                            sh "docker-compose rm -sf spring-blue || true"
-                        } else {
-                            echo "기존 spring-green 컨테이너 종료"
-                            sh "docker-compose rm -sf spring-green || true"
-                        }
-                    }
-                }
+                echo 'Deploying the Blue version using Docker Compose...'
+                // docker-compose.yml 파일은 /Users/hyunjae/IdeaProjects/FlyToTheMoon-main/study/ 경로에 위치
+                // app_blue 서비스만 별도로 실행 (내부 포트 8888, 외부 노출은 8889)
+                sh 'docker-compose -f docker-compose.yml up -d app_blue'
+            }
+        }
+        stage('Health Check Blue') {
+            steps {
+                echo 'Performing health check on Blue version...'
+                // Blue 버전 컨테이너가 기동할 시간을 주기 위해 잠시 대기 (필요에 따라 시간 조정)
+                sh 'sleep 10'
+                // /health 엔드포인트를 통해 Blue 버전이 정상 동작하는지 확인 (엔드포인트는 애플리케이션에 맞게 조정)
+                sh 'curl --fail http://localhost:8889/health || (echo "Health check failed" && exit 1)'
+            }
+        }
+        stage('Switch Traffic to Blue') {
+            steps {
+                echo 'Switching traffic to Blue version via Nginx update...'
+                // Nginx 설정 파일은 docker-compose.yml과 동일한 경로의 ./nginx/conf.d 폴더에 위치
+                // 아래 명령은 기존 upstream 설정에서 app_green을 app_blue로 변경합니다.
+                sh '''
+                  sed -i.bak 's/server app_green:8888;/server app_blue:8889;/' ./nginx/conf.d/spring_app.conf
+                '''
+                // Nginx 컨테이너 이름은 docker-compose.yml의 nginx 서비스로 가정 (필요시 container 이름 확인)
+                sh 'docker exec nginx nginx -s reload'
+            }
+        }
+        stage('Remove Green Version') {
+            steps {
+                echo 'Removing the Green version container...'
+                // 기존 Green 버전 컨테이너를 제거하여 불필요한 리소스 사용을 줄입니다.
+                sh 'docker-compose -f docker-compose.yml rm -f app_green'
             }
         }
     }
