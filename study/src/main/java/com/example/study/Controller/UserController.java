@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
-public class UserController {//무중단 배포 테스트 1
+public class UserController {//무중단 배포 테스트 12
 
     @Autowired
     private UserService userService;
