@@ -29,6 +29,7 @@ public class UserController {//무중단 배포 테스트 12
 
         // 카프카로 이메일 발송
         kafkaTemplate.send("user-email", user.getEmail());
+        System.out.println("Kafka로 메시지 발송: " + user.getEmail());
 
         return userService.saveUser(user);
     }
