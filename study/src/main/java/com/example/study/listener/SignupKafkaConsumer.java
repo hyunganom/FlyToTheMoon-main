@@ -11,7 +11,7 @@ public class SignupKafkaConsumer {
     @Autowired
     private EmailService emailService;
 
-    @KafkaListener(topics = "user-email", groupId = "signup-email-group")
+    @KafkaListener(topics = "user-email", groupId = "study-group")
     public void consume(String email) {
         System.out.println("Kafka에서 메시지 수신: " + email);
         emailService.sendConfirmationEmail(email);

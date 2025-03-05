@@ -17,7 +17,7 @@ public class KafkaConsumerConfig {
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         // Kafka 브로커 주소 (Docker Compose에서 외부 포트 사용)
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9092");
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:9093");
         // 컨슈머 그룹 설정
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "study-group");
         // key/value 역직렬화 설정
