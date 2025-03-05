@@ -36,7 +36,6 @@ pipeline {
                 }
             }
         }
-        // 헬스체크 단계는 스킵 또는 제거합니다.
         stage('Switch Traffic to Blue') {
             steps {
                 echo 'Switching traffic to Blue version via Nginx update...'
@@ -46,11 +45,12 @@ pipeline {
                 sh 'docker exec nginx nginx -s reload'
             }
         }
-        stage('Remove Green Version') {
+        stage('Update Green Version') {
             steps {
-                echo 'Removing the Green version container...'
+                echo 'Updating the Green version container with the new build...'
                 dir('study') {
-                    sh 'docker-compose -f docker-compose.yml rm -f app_green'
+                    // 강제 재생성을 통해 새 이미지가 반영되도록 합니다.
+                    sh 'docker-compose -f docker-compose.yml up -d --force-recreate app_green'
                 }
             }
         }
