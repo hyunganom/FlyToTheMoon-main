@@ -13,7 +13,7 @@ public class SignupKafkaConsumer {
    // private EmailService emailService;
 
     @KafkaListener(topics = "user-email", groupId = "study-group", containerFactory = "kafkaConsumerFactory")
-    public void consume(ConsumerRecord<String, String> consumerRecord) {
+    public void consume(ConsumerRecord<String, String> consumerRecord) {//
         System.out.println("Kafka에서 메시지 수신: " + consumerRecord.toString());
         //emailService.sendConfirmationEmail(email);
     }
